@@ -31,7 +31,7 @@ fn run_with_mode(
 ) -> Result<Vec<Diagnostic>> {
     let mut diagnostics = Vec::new();
     let mut scopes = Vec::new();
-    let mut ctx = Ctx::new(&mut diagnostics, &mut scopes, 0, diagnose, &look_for);
+    let mut ctx = Ctx::new(&mut diagnostics, &mut scopes, diagnose, &look_for);
     run(&mut ctx, e, Some(exp_ty))?;
     Ok(diagnostics)
 }

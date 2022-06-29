@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 type Scope = HashMap<String, Ty>;
 
+#[derive(Debug)]
 pub struct Ctx<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
     scopes: &'a mut Vec<Scope>,
@@ -15,10 +16,10 @@ impl<'a> Ctx<'a> {
     pub fn new(
         diagnostics: &'a mut Vec<Diagnostic>,
         scopes: &'a mut Vec<Scope>,
-        index: usize,
         diagnose: bool,
         look_for: &'a Option<WithPos<Expr>>,
     ) -> Self {
+        let index = scopes.len().max(1) - 1;
         Self {
             diagnostics,
             scopes,
