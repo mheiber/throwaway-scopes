@@ -43,7 +43,7 @@ impl<'a> Ctx<'a> {
         let g = &mut self.scopes[self.index];
         g.insert(key, val);
     }
-    pub fn enter<T>(&mut self, cb: &mut dyn FnMut(&mut Ctx) -> T) -> T {
+    pub fn enter<T>(&mut self, cb: &mut impl FnMut(&mut Ctx) -> T) -> T {
         self.scopes.push(Default::default());
         let index = self.scopes.len() - 1;
         let mut ctx = Ctx {
