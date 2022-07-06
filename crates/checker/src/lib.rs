@@ -1,6 +1,8 @@
-mod ctx;
 pub mod data;
-use crate::ctx::Ctx;
+mod ctx;
+mod subtype;
+
+use crate::ctx::{RootCtx, Ctx};
 use crate::data::*;
 use anyhow::{self, bail, Context, Result};
 
@@ -29,16 +31,17 @@ fn run_with_mode(
     look_for: Option<WithPos<Expr>>,
     exp_ty: Ty,
 ) -> Result<Vec<Diagnostic>> {
-    let mut diagnostics = Vec::new();
-    let mut scopes = Vec::new();
-    let mut ctx = Ctx::new(&mut diagnostics, &mut scopes, diagnose, &look_for);
-    run(&mut ctx, e, Some(exp_ty))?;
-    Ok(diagnostics)
+    let mut root_ctx = RootCtx::new(diagnose, look_for);
+    {
+        let ctx = &mut root_ctx.enter();
+        run(ctx, e, Some(exp_ty))?;
+    }
+    Ok(root_ctx.take_diagnostics())
 }
 
 pub fn run<'a>(ctx: &mut Ctx<'a>, e_with_pos: &WithPos<Expr>, exp_ty: Option<Ty>) -> Result<Ty> {
     let e = &e_with_pos.item;
-    let res = match e {
+    let res: Result<Ty> = match e {
         Expr::Assign(var, expr) => {
             let name = var.0.clone();
             let ty = run(ctx, expr, exp_ty.clone())?;
@@ -51,9 +54,15 @@ pub fn run<'a>(ctx: &mut Ctx<'a>, e_with_pos: &WithPos<Expr>, exp_ty: Option<Ty>
             false_branch,
         } => {
             run(ctx, cond, Some(Ty::Bool))?;
-            let t_ty = run(ctx, true_branch, exp_ty.clone())?;
-            let false_branch_exp_ty = exp_ty.clone().unwrap_or(t_ty);
-            run(ctx, false_branch, Some(false_branch_exp_ty))
+            let t_ty = {
+                let ctx = &mut ctx.enter();
+                run(ctx, true_branch, exp_ty.clone())?
+            };
+            let f_ty = {
+                let ctx = &mut ctx.enter();
+                run(ctx, false_branch, exp_ty.clone())?
+            };
+            Ok(subtype::join(&t_ty, &f_ty))
         }
         Expr::True | Expr::False => Ok(Ty::Bool),
         Expr::Number(_) => Ok(Ty::Num),
@@ -77,11 +86,13 @@ pub fn run<'a>(ctx: &mut Ctx<'a>, e_with_pos: &WithPos<Expr>, exp_ty: Option<Ty>
             param_ty,
             ret_ty,
             body,
-        }) => ctx.enter(&mut |ctx| {
+        }) => {
+            let ctx = &mut ctx.enter();
             ctx.insert(param.0.clone(), param_ty.clone());
             run(ctx, body, Some(ret_ty.clone()))?;
             Ok(ret_ty.clone())
-        }),
+        }
+        ,
     };
 
     if ctx.looking_for(e_with_pos) {

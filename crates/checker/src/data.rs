@@ -6,6 +6,7 @@ pub enum Ty {
     Bool,
     Num,
     Str,
+    Union(Box<Ty>, Box<Ty>),
     ProducedDiagnostic,
 }
 
@@ -92,13 +93,14 @@ impl Display for Expr {
 
 impl Display for Ty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Ty::Bool => "bool",
-            Ty::Num => "num",
-            Ty::Str => "str",
-            Ty::ProducedDiagnostic => "ERROR",
-        };
-        write!(f, "{}", s)
+        match self {
+            Ty::Bool => write!(f, "bool"),
+            Ty::Num => write!(f, "num"),
+            Ty::Str => write!(f, "str"),
+            Ty::ProducedDiagnostic => write!(f, "ERROR"),
+            Ty::Union(ty1, ty2) => write!(f, "({} | {})", *ty1, *ty2),
+
+        }
     }
 }
 
